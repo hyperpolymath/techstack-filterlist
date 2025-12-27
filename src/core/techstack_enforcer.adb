@@ -89,11 +89,80 @@ package body Techstack_Enforcer with SPARK_Mode => Off is
       end;
    end Initialize;
 
+   --  Helper to extract quoted string value from TOML line
+   --  Format: key = "value" or key = 'value'
+   function Extract_Quoted_Value (Line : String) return String is
+      Eq_Pos : Natural := 0;
+      Start_Quote, End_Quote : Natural := 0;
+      Quote_Char : Character := '"';
+   begin
+      --  Find equals sign
+      for I in Line'Range loop
+         if Line (I) = '=' then
+            Eq_Pos := I;
+            exit;
+         end if;
+      end loop;
+
+      if Eq_Pos = 0 or Eq_Pos >= Line'Last then
+         return "";
+      end if;
+
+      --  Find opening quote
+      for I in Eq_Pos + 1 .. Line'Last loop
+         if Line (I) = '"' or Line (I) = ''' then
+            Start_Quote := I;
+            Quote_Char := Line (I);
+            exit;
+         end if;
+      end loop;
+
+      if Start_Quote = 0 or Start_Quote >= Line'Last then
+         return "";
+      end if;
+
+      --  Find closing quote
+      for I in Start_Quote + 1 .. Line'Last loop
+         if Line (I) = Quote_Char then
+            End_Quote := I;
+            exit;
+         end if;
+      end loop;
+
+      if End_Quote = 0 or End_Quote <= Start_Quote + 1 then
+         return "";
+      end if;
+
+      return Line (Start_Quote + 1 .. End_Quote - 1);
+   end Extract_Quoted_Value;
+
+   --  Helper to check if line starts with key
+   function Starts_With_Key (Line : String; Key : String) return Boolean is
+      Trimmed : constant String := Trim (Line, Ada.Strings.Both);
+   begin
+      if Trimmed'Length < Key'Length then
+         return False;
+      end if;
+      return Trimmed (Trimmed'First .. Trimmed'First + Key'Length - 1) = Key;
+   end Starts_With_Key;
+
    procedure Load_Config (Config_Path : String; Success : out Boolean) is
       File : File_Type;
       Line : String (1 .. 1024);
       Last : Natural;
       In_Block : Boolean := False;
+      In_Mode : Boolean := False;
+
+      --  Current block being parsed
+      Cur_Pattern : Pattern_String := (others => ' ');
+      Cur_Pattern_Len : Natural := 0;
+      Cur_Reason : Reason_String := (others => ' ');
+      Cur_Reason_Len : Natural := 0;
+      Cur_Level : Block_Level := Block;
+      Cur_Enabled : Boolean := True;
+      Has_Pattern : Boolean := False;
+
+      Add_Success : Boolean;
    begin
       Success := False;
       if not Exists (Config_Path) then
@@ -102,26 +171,136 @@ package body Techstack_Enforcer with SPARK_Mode => Off is
 
       Open (File, In_File, Config_Path);
 
-      --  Clear existing entries loaded from file (keep defaults)
-      --  In production, would have separate default vs user filters
+      --  Clear user filters (keep only if fresh load desired)
+      --  DB.Count := 0;  -- Uncomment to clear defaults
 
       while not End_Of_File (File) loop
          Get_Line (File, Line, Last);
 
-         --  Parse TOML-style config
-         --  [[block]]
-         --  pattern = "*.py"
-         --  level = "fatal"
-         --  reason = "Python banned"
+         if Last = 0 then
+            --  Empty line, skip
+            null;
+         elsif Line (1) = '#' then
+            --  Comment, skip
+            null;
+         elsif Last >= 9 and then Line (1 .. 9) = "[[block]]" then
+            --  Save previous block if we have one
+            if In_Block and Has_Pattern then
+               Add_Filter (Trim (Cur_Pattern (1 .. Cur_Pattern_Len), Ada.Strings.Both),
+                           Cur_Level,
+                           (if Cur_Reason_Len > 0
+                            then Trim (Cur_Reason (1 .. Cur_Reason_Len), Ada.Strings.Both)
+                            else ""),
+                           Add_Success);
+               --  Set enabled state
+               if Add_Success and not Cur_Enabled then
+                  Toggle_Filter (DB.Count, Add_Success);
+               end if;
+            end if;
 
-         if Last >= 9 and then Line (1 .. 9) = "[[block]]" then
+            --  Start new block
             In_Block := True;
-            --  Would parse following lines for pattern, level, reason
+            In_Mode := False;
+            Has_Pattern := False;
+            Cur_Pattern := (others => ' ');
+            Cur_Pattern_Len := 0;
+            Cur_Reason := (others => ' ');
+            Cur_Reason_Len := 0;
+            Cur_Level := Block;
+            Cur_Enabled := True;
+
          elsif Last >= 6 and then Line (1 .. 6) = "[mode]" then
+            --  Save previous block if we have one
+            if In_Block and Has_Pattern then
+               Add_Filter (Trim (Cur_Pattern (1 .. Cur_Pattern_Len), Ada.Strings.Both),
+                           Cur_Level,
+                           (if Cur_Reason_Len > 0
+                            then Trim (Cur_Reason (1 .. Cur_Reason_Len), Ada.Strings.Both)
+                            else ""),
+                           Add_Success);
+            end if;
             In_Block := False;
-            --  Parse mode setting
+            In_Mode := True;
+
+         elsif In_Mode then
+            --  Parse mode settings
+            if Starts_With_Key (Line (1 .. Last), "enforce") then
+               declare
+                  Val : constant String := Extract_Quoted_Value (Line (1 .. Last));
+               begin
+                  if Val = "learning" then
+                     DB.Mode := Learning;
+                  elsif Val = "warn" then
+                     DB.Mode := Warn_Only;
+                  elsif Val = "enforce" then
+                     DB.Mode := Enforce;
+                  elsif Val = "lockdown" then
+                     DB.Mode := Lockdown;
+                  end if;
+               end;
+            end if;
+
+         elsif In_Block then
+            --  Parse block fields
+            if Starts_With_Key (Line (1 .. Last), "pattern") then
+               declare
+                  Val : constant String := Extract_Quoted_Value (Line (1 .. Last));
+               begin
+                  if Val'Length > 0 and Val'Length <= Max_Pattern_Length then
+                     Cur_Pattern_Len := Val'Length;
+                     Cur_Pattern (1 .. Cur_Pattern_Len) := Val;
+                     Has_Pattern := True;
+                  end if;
+               end;
+
+            elsif Starts_With_Key (Line (1 .. Last), "level") then
+               declare
+                  Val : constant String := Extract_Quoted_Value (Line (1 .. Last));
+               begin
+                  if Val = "allow" then
+                     Cur_Level := Allow;
+                  elsif Val = "warn" then
+                     Cur_Level := Warn;
+                  elsif Val = "block" then
+                     Cur_Level := Block;
+                  elsif Val = "fatal" then
+                     Cur_Level := Fatal;
+                  end if;
+               end;
+
+            elsif Starts_With_Key (Line (1 .. Last), "reason") then
+               declare
+                  Val : constant String := Extract_Quoted_Value (Line (1 .. Last));
+               begin
+                  if Val'Length > 0 and Val'Length <= Max_Reason_Length then
+                     Cur_Reason_Len := Val'Length;
+                     Cur_Reason (1 .. Cur_Reason_Len) := Val;
+                  end if;
+               end;
+
+            elsif Starts_With_Key (Line (1 .. Last), "enabled") then
+               --  Check for false value
+               if Index (Line (1 .. Last), "false") > 0 then
+                  Cur_Enabled := False;
+               else
+                  Cur_Enabled := True;
+               end if;
+            end if;
          end if;
       end loop;
+
+      --  Don't forget the last block
+      if In_Block and Has_Pattern then
+         Add_Filter (Trim (Cur_Pattern (1 .. Cur_Pattern_Len), Ada.Strings.Both),
+                     Cur_Level,
+                     (if Cur_Reason_Len > 0
+                      then Trim (Cur_Reason (1 .. Cur_Reason_Len), Ada.Strings.Both)
+                      else ""),
+                     Add_Success);
+         if Add_Success and not Cur_Enabled then
+            Toggle_Filter (DB.Count, Add_Success);
+         end if;
+      end if;
 
       Close (File);
       Success := True;

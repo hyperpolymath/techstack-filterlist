@@ -1,16 +1,24 @@
 # Techstack Enforcer - GitLab CI Template
 # Include this template in your project to enforce techstack compliance
 #
-# Usage in your .gitlab-ci.yml:
+# USAGE OPTION 1 - Include from remote:
 #
 #   include:
-#     - remote: 'https://raw.githubusercontent.com/your-org/techstack-filterlist/main/ci-templates/gitlab-ci-techstack.yml'
+#     - remote: 'https://raw.githubusercontent.com/${TECHSTACK_REPO}/main/ci-templates/gitlab-ci-techstack.yml'
 #
 #   variables:
+#     TECHSTACK_REPO: hyperpolymath/techstack-filterlist  # Your fork/source
 #     TECHSTACK_DEFSET: moderate    # or strict, enterprise, permissive
 #     TECHSTACK_MODE: enforce       # or learning, warn, lockdown
 #
-# Or copy this file directly into your project.
+# USAGE OPTION 2 - Include from GitLab project:
+#
+#   include:
+#     - project: 'your-group/techstack-filterlist'
+#       file: '/ci-templates/gitlab-ci-techstack.yml'
+#       ref: main
+#
+# USAGE OPTION 3 - Copy this file directly into your project.
 
 # =============================================================================
 # VARIABLES - Override these in your project

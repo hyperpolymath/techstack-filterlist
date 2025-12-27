@@ -349,6 +349,119 @@ package body Techstack_TUI is
       Put (Hide_Cursor);
    end Render_Scan_Repo;
 
+   procedure Render_Edit_Filter (State : in out TUI_State) is
+      Pattern_Buf : String (1 .. 256) := (others => ' ');
+      Reason_Buf  : String (1 .. 256) := (others => ' ');
+      Level_Buf   : String (1 .. 10) := (others => ' ');
+      Pattern_Len, Reason_Len, Level_Len : Natural;
+      New_Level : Block_Level := Block;
+      Success : Boolean;
+      Current_Filter : Filter_Entry;
+      Current_Pattern, Current_Reason : String (1 .. 256) := (others => ' ');
+      Cur_Pat_Len, Cur_Reas_Len : Natural;
+   begin
+      --  Get current filter data
+      Current_Filter := Techstack_Enforcer.Get_Filter (State.Selected_Index);
+      Cur_Pat_Len := Current_Filter.Pattern_Len;
+      Cur_Reas_Len := Current_Filter.Reason_Len;
+      Current_Pattern (1 .. Cur_Pat_Len) := Current_Filter.Pattern (1 .. Cur_Pat_Len);
+      Current_Reason (1 .. Cur_Reas_Len) := Current_Filter.Reason (1 .. Cur_Reas_Len);
+
+      Put (Show_Cursor);
+      Put_Line (Bold & Cyan & "  EDIT FILTER" & Reset);
+      Put_Line ("  -----------------------------------------------");
+      New_Line;
+
+      --  Show current values
+      Put_Line ("  Current values:");
+      Put ("    Pattern: ");
+      Put (Green);
+      Put_Line (Trim (Current_Pattern (1 .. Cur_Pat_Len), Ada.Strings.Both));
+      Put (Reset);
+      Put ("    Level:   ");
+      Put (Get_Level_Color (Current_Filter.Level));
+      case Current_Filter.Level is
+         when Allow => Put_Line ("Allow");
+         when Warn  => Put_Line ("Warn");
+         when Block => Put_Line ("Block");
+         when Fatal => Put_Line ("Fatal");
+      end case;
+      Put (Reset);
+      Put ("    Reason:  ");
+      Put_Line (Trim (Current_Reason (1 .. Cur_Reas_Len), Ada.Strings.Both));
+      Put ("    Enabled: ");
+      if Current_Filter.Enabled then
+         Put_Line (Green & "Yes" & Reset);
+      else
+         Put_Line (Red & "No" & Reset);
+      end if;
+      New_Line;
+
+      Put_Line ("  Enter new values (press Enter to keep current):");
+      New_Line;
+
+      Put ("  Pattern [" & Trim (Current_Pattern (1 .. Cur_Pat_Len), Ada.Strings.Both) & "]: ");
+      Get_Line (Pattern_Buf, Pattern_Len);
+
+      --  Use current value if empty
+      if Pattern_Len = 0 then
+         Pattern_Buf (1 .. Cur_Pat_Len) := Current_Pattern (1 .. Cur_Pat_Len);
+         Pattern_Len := Cur_Pat_Len;
+      end if;
+
+      Put ("  Level (a/w/b/f) [");
+      case Current_Filter.Level is
+         when Allow => Put ("a");
+         when Warn  => Put ("w");
+         when Block => Put ("b");
+         when Fatal => Put ("f");
+      end case;
+      Put ("]: ");
+      Get_Line (Level_Buf, Level_Len);
+
+      if Level_Len > 0 then
+         case Level_Buf (1) is
+            when 'a' | 'A' => New_Level := Allow;
+            when 'w' | 'W' => New_Level := Warn;
+            when 'b' | 'B' => New_Level := Block;
+            when 'f' | 'F' => New_Level := Fatal;
+            when others => New_Level := Current_Filter.Level;
+         end case;
+      else
+         New_Level := Current_Filter.Level;
+      end if;
+
+      Put ("  Reason [" & Trim (Current_Reason (1 .. Cur_Reas_Len), Ada.Strings.Both) & "]: ");
+      Get_Line (Reason_Buf, Reason_Len);
+
+      if Reason_Len = 0 then
+         Reason_Buf (1 .. Cur_Reas_Len) := Current_Reason (1 .. Cur_Reas_Len);
+         Reason_Len := Cur_Reas_Len;
+      end if;
+
+      --  Delete old filter and add updated one
+      Techstack_Enforcer.Remove_Filter (State.Selected_Index, Success);
+
+      if Success then
+         Techstack_Enforcer.Add_Filter
+           (Pattern_Buf (1 .. Pattern_Len),
+            New_Level,
+            Reason_Buf (1 .. Reason_Len),
+            Success);
+
+         if Success then
+            Set_Status (State, "Filter updated: " & Trim (Pattern_Buf (1 .. Pattern_Len), Ada.Strings.Both));
+         else
+            Set_Status (State, "Failed to add updated filter", True);
+         end if;
+      else
+         Set_Status (State, "Failed to remove old filter", True);
+      end if;
+
+      State.Current_View := Filter_List;
+      Put (Hide_Cursor);
+   end Render_Edit_Filter;
+
    procedure Render_Status_Bar (State : TUI_State) is
    begin
       Move_Cursor (State.Screen_Height, 1);
@@ -399,6 +512,12 @@ package body Techstack_TUI is
                else
                   Set_Status (State, "Failed to delete filter", True);
                end if;
+            end if;
+         when 'e' =>
+            if Count > 0 then
+               State.Current_View := Edit_Filter;
+            else
+               Set_Status (State, "No filter to edit", True);
             end if;
          when ' ' =>  --  Space to toggle
             if Count > 0 then
@@ -492,12 +611,11 @@ package body Techstack_TUI is
             when Filter_List =>
                Render_Filter_List (State);
                New_Line;
-               Put_Line (Dim & "  [a]dd [d]elete [Space]toggle [1-4]mode [s]can [?]help [q]uit" & Reset);
+               Put_Line (Dim & "  [a]dd [e]dit [d]elete [Space]toggle [1-4]mode [s]can [?]help [q]uit" & Reset);
             when Add_Filter =>
                Render_Add_Filter (State);
             when Edit_Filter =>
-               Put_Line ("  Edit mode - not implemented yet");
-               State.Current_View := Filter_List;
+               Render_Edit_Filter (State);
             when Stats =>
                Render_Stats (State);
             when Help =>

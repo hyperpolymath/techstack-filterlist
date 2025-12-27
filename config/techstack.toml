@@ -18,8 +18,11 @@ webhook = false
 enabled = true
 auto_suggest = true
 confidence_threshold = 80
-# CVE database integration
-cve_feed = "https://nvd.nist.gov/feeds/json/cve/1.1/"
+# CVE database integration - NVD 2.0 API
+# Documentation: https://nvd.nist.gov/developers/vulnerabilities
+# Note: API key recommended for production use (increases rate limits)
+cve_api = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+# cve_api_key = ""  # Optional: Get from https://nvd.nist.gov/developers/request-an-api-key
 
 # Language recommendations based on vulnerability types
 [learning.recommendations]

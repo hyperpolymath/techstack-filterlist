@@ -4,10 +4,13 @@
 # Note: While this project recommends GitLab CI, this template is provided
 # for teams that use GitHub Actions.
 #
-# Usage:
+# SETUP REQUIRED:
 #   1. Copy this file to .github/workflows/techstack.yml
-#   2. Set TECHSTACK_DEFSET to your desired definition set
-#   3. Customize the trigger rules as needed
+#   2. Set repository variable TECHSTACK_REPO to the techstack-filterlist fork/location
+#      (Settings > Secrets and variables > Actions > Variables > New repository variable)
+#      Example: TECHSTACK_REPO = "hyperpolymath/techstack-filterlist"
+#   3. Or replace ${{ vars.TECHSTACK_REPO }} with your repository path directly
+#   4. Customize TECHSTACK_DEFSET and TECHSTACK_MODE as needed
 
 name: Techstack Enforcement
 
@@ -27,6 +30,10 @@ env:
   # Enforcement mode: learning, warn, enforce, lockdown
   TECHSTACK_MODE: enforce
 
+  # Repository containing techstack-enforcer (set as GitHub variable or override here)
+  # To set: Settings > Secrets and variables > Actions > Variables > TECHSTACK_REPO
+  TECHSTACK_REPO: ${{ vars.TECHSTACK_REPO || 'hyperpolymath/techstack-filterlist' }}
+
 jobs:
   # Quick check on every PR
   techstack-check:
@@ -41,7 +48,7 @@ jobs:
       - name: Checkout techstack-enforcer
         uses: actions/checkout@v4
         with:
-          repository: your-org/techstack-filterlist
+          repository: ${{ env.TECHSTACK_REPO }}
           path: techstack-enforcer
 
       - name: Setup Ada/GNAT
@@ -58,6 +65,7 @@ jobs:
           echo "==============="
           echo "Definition Set: $TECHSTACK_DEFSET"
           echo "Mode: $TECHSTACK_MODE"
+          echo "Repo: $TECHSTACK_REPO"
           echo ""
 
           ./techstack-enforcer/bin/techstack_main audit . \
@@ -80,7 +88,7 @@ jobs:
       - name: Checkout techstack-enforcer
         uses: actions/checkout@v4
         with:
-          repository: your-org/techstack-filterlist
+          repository: ${{ env.TECHSTACK_REPO }}
           path: techstack-enforcer
 
       - name: Setup Ada/GNAT
@@ -124,7 +132,7 @@ jobs:
       - name: Checkout techstack-enforcer
         uses: actions/checkout@v4
         with:
-          repository: your-org/techstack-filterlist
+          repository: ${{ env.TECHSTACK_REPO }}
           path: techstack-enforcer
 
       - name: Setup Ada/GNAT
@@ -168,7 +176,7 @@ jobs:
       - name: Checkout techstack-enforcer
         uses: actions/checkout@v4
         with:
-          repository: your-org/techstack-filterlist
+          repository: ${{ env.TECHSTACK_REPO }}
           path: techstack-enforcer
 
       - name: Setup Ada/GNAT
