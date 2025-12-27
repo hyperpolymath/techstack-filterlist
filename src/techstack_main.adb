@@ -9,6 +9,7 @@ with Ada.Strings.Fixed;     use Ada.Strings.Fixed;
 with Techstack_Enforcer;
 with Techstack_Types;       use Techstack_Types;
 with Techstack_Notify;
+with Techstack_JSON_IO;
 
 procedure Techstack_Main is
 
@@ -20,6 +21,8 @@ procedure Techstack_Main is
       Put_Line ("Commands:");
       Put_Line ("  check <path>      Check a file or directory");
       Put_Line ("  audit <path>      Full repository audit");
+      Put_Line ("  decide [<path>]   Output allow/deny decision as JSON");
+      Put_Line ("                    Reads paths from stdin if no path given");
       Put_Line ("  list              List all filters");
       Put_Line ("  add <pattern>     Add a filter interactively");
       Put_Line ("  init              Initialize with default filters");
@@ -31,6 +34,15 @@ procedure Techstack_Main is
       Put_Line ("  --fatal-exit      Exit with code 1 on any fatal violation");
       Put_Line ("  --notify          Send desktop notifications");
       Put_Line ("  --json            Output in JSON format");
+      New_Line;
+      Put_Line ("Input Format (for decide command with stdin):");
+      Put_Line ("  One file path per line");
+      New_Line;
+      Put_Line ("Output Format (decide command JSON):");
+      Put_Line ("  {""decisions"": [{""file"": ""..."", ""decision"": ""allow|deny|warn"",");
+      Put_Line ("    ""level"": ""allow|warn|block|fatal"", ""pattern"": ""..."", ""reason"": ""...""}],");
+      Put_Line ("   ""summary"": {""total"": N, ""allowed"": N, ""denied"": N, ""warnings"": N},");
+      Put_Line ("   ""mode"": ""enforce""}");
    end Print_Usage;
 
    procedure Print_Version is
@@ -102,6 +114,36 @@ procedure Techstack_Main is
          Set_Exit_Status (Failure);
       end if;
    end Do_Audit;
+
+   --  Decide command: outputs structured JSON with allow/deny decisions
+   procedure Do_Decide_Single (Path : String) is
+      Dec : Techstack_JSON_IO.File_Decision;
+   begin
+      Techstack_JSON_IO.Decide_File (Path, Dec);
+      Techstack_JSON_IO.Output_Decision_JSON (Dec);
+
+      if Dec.Decision = Techstack_JSON_IO.Deny_Decision then
+         Set_Exit_Status (Failure);
+      end if;
+   end Do_Decide_Single;
+
+   procedure Do_Decide_Batch is
+      Batch   : Techstack_JSON_IO.Batch_Result;
+      Success : Boolean;
+   begin
+      Techstack_JSON_IO.Decide_Batch_From_Stdin (Batch, Success);
+
+      if Success then
+         Techstack_JSON_IO.Output_Batch_JSON (Batch);
+
+         if Batch.Summary.Denied > 0 then
+            Set_Exit_Status (Failure);
+         end if;
+      else
+         Put_Line ("{""error"": ""Failed to read input""}");
+         Set_Exit_Status (Failure);
+      end if;
+   end Do_Decide_Batch;
 
    procedure Do_List is
       Count : constant Natural := Techstack_Enforcer.Get_Filter_Count;
@@ -204,6 +246,16 @@ begin
             Do_Audit (Target_Path (1 .. Path_Len), Notify_Flag, Fatal_Exit);
          else
             Do_Audit (".", Notify_Flag, Fatal_Exit);
+         end if;
+
+      elsif Command = "decide" then
+         --  Decide command: output allow/deny decision as JSON
+         --  If path given, decide on single file
+         --  If no path, read paths from stdin (batch mode)
+         if Path_Len > 0 then
+            Do_Decide_Single (Target_Path (1 .. Path_Len));
+         else
+            Do_Decide_Batch;
          end if;
 
       elsif Command = "list" then
