@@ -1,0 +1,231 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+= Techstack Filterlist
+:toc: macro
+:toclevels: 2
+:icons: font
+
+Declarative tech stack policy enforcement for repositories.
+
+image:https://img.shields.io/github/license/hyperpolymath/techstack-filterlist[License]
+
+toc::[]
+
+== Overview
+
+Techstack Filterlist provides a declarative way to control which languages, frameworks, tools, and patterns are allowed or forbidden in your repositories. Add it to a template repo and every derived project inherits your tech stack policies.
+
+=== Features
+
+* **Whitelist/Blacklist** - Allow or block languages, file types, dependencies
+* **Importable Presets** - Use community-maintained policy sets
+* **GitHub Action** - Automated CI enforcement
+* **Pre-commit Hook** - Local validation before pushing
+* **Composable** - Layer multiple policies with inheritance
+
+== Quick Start
+
+=== 1. Add a filterlist
+
+Create `.techstack/filterlist.scm` in your repo:
+
+[source,scheme]
+----
+(filterlist
+  (version "1.0")
+  (name "my-project-policy")
+
+  ;; Import a preset
+  (import "hyperpolymath/standard")
+
+  ;; Override or extend
+  (allow
+    (language "python" (reason "Data science team uses it")))
+
+  (block
+    (pattern "*.min.js" (reason "No minified vendor code"))))
+----
+
+=== 2. Add the GitHub Action
+
+[source,yaml]
+----
+# .github/workflows/techstack-check.yml
+# SPDX-License-Identifier: AGPL-3.0-or-later
+name: Techstack Policy
+on: [push, pull_request]
+permissions: read-all
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: hyperpolymath/techstack-filterlist@v1
+----
+
+== Filterlist Format
+
+=== Basic Structure
+
+[source,scheme]
+----
+(filterlist
+  (version "1.0")
+  (name "policy-name")
+
+  ;; Import presets (optional)
+  (import "preset-name")
+
+  ;; Block rules (deny by default when present)
+  (block
+    (language "go")
+    (file "package-lock.json")
+    (pattern "*.exe")
+    (dependency "lodash"))
+
+  ;; Allow rules (override blocks)
+  (allow
+    (language "rust")
+    (file "Cargo.lock")
+    (pattern "*.rs")))
+----
+
+=== Rule Types
+
+|===
+| Rule Type | Description | Example
+
+| `language` | Programming language by name | `(language "typescript")`
+| `file` | Exact filename match | `(file "yarn.lock")`
+| `pattern` | Glob pattern match | `(pattern "*.min.js")`
+| `dependency` | Package/crate/module name | `(dependency "left-pad")`
+| `tool` | Build tool or runtime | `(tool "webpack")`
+| `framework` | Framework detection | `(framework "react")`
+|===
+
+=== Modes
+
+* **blocklist** (default) - Everything allowed unless blocked
+* **allowlist** - Everything blocked unless allowed
+
+[source,scheme]
+----
+(filterlist
+  (version "1.0")
+  (mode allowlist)  ;; Strict mode: only explicitly allowed items pass
+
+  (allow
+    (language "rust")
+    (language "rescript")
+    (tool "deno")))
+----
+
+== Presets
+
+=== Available Presets
+
+|===
+| Preset | Description
+
+| `hyperpolymath/standard` | RSR-compliant stack (Rust, ReScript, Deno, Gleam)
+| `hyperpolymath/strict` | Standard + no vendor code, no generated files
+| `security/no-secrets` | Block common secret file patterns
+| `minimal/rust-only` | Pure Rust projects
+| `minimal/deno-only` | Pure Deno/TypeScript projects
+|===
+
+=== Creating Custom Presets
+
+Presets are just filterlist files published to a repo:
+
+[source,scheme]
+----
+;; my-org/company-standard/filterlist.scm
+(filterlist
+  (version "1.0")
+  (name "company-standard")
+  (description "ACME Corp approved technologies")
+
+  (block
+    (language "php" (reason "Legacy, use Go"))
+    (language "perl" (reason "Maintenance burden"))
+    (tool "grunt" (reason "Use modern bundlers"))))
+----
+
+Import via:
+[source,scheme]
+----
+(import "my-org/company-standard")
+----
+
+== Detection Methods
+
+=== Language Detection
+
+|===
+| Language | Detection Method
+
+| Rust | `Cargo.toml`, `*.rs`
+| ReScript | `rescript.json`, `*.res`
+| TypeScript | `tsconfig.json`, `*.ts`, `*.tsx`
+| Go | `go.mod`, `*.go`
+| Python | `pyproject.toml`, `*.py`, `requirements.txt`
+| JavaScript | `*.js`, `*.mjs`, `*.jsx`
+|===
+
+=== Tool Detection
+
+|===
+| Tool | Detection Method
+
+| npm | `package-lock.json`, `node_modules/`
+| yarn | `yarn.lock`
+| pnpm | `pnpm-lock.yaml`
+| bun | `bun.lockb`
+| deno | `deno.json`, `deno.lock`
+|===
+
+== CLI Usage
+
+[source,bash]
+----
+# Check current directory
+techstack-filter check
+
+# Check specific path
+techstack-filter check ./src
+
+# Use specific filterlist
+techstack-filter check --config .techstack/strict.scm
+
+# Output as JSON (for CI parsing)
+techstack-filter check --format json
+----
+
+== Pre-commit Hook
+
+Add to `.pre-commit-config.yaml`:
+
+[source,yaml]
+----
+repos:
+  - repo: https://github.com/hyperpolymath/techstack-filterlist
+    rev: v1.0.0
+    hooks:
+      - id: techstack-check
+----
+
+== Integration
+
+=== With RSR
+
+Techstack Filterlist is designed to work with link:https://github.com/hyperpolymath/rhodium-standard-repositories[Rhodium Standard Repositories]. The `hyperpolymath/standard` preset enforces RSR language policies automatically.
+
+=== With Rhodibot
+
+link:https://github.com/hyperpolymath/rhodibot[Rhodibot] uses Techstack Filterlist internally for CCCP (banned language) detection.
+
+== License
+
+AGPL-3.0-or-later. See link:LICENSE.txt[LICENSE.txt] for details.
