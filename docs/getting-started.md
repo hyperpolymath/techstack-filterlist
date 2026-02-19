@@ -29,16 +29,16 @@ alr toolchain --select
 ### Option 1: Quick Install Script
 
 ```bash
-git clone https://github.com/hyperpolymath/techstack-filterlist.git
-cd techstack-filterlist
+git clone https://github.com/hyperpolymath/techstack-enforcer.git
+cd techstack-enforcer
 ./scripts/install.sh
 ```
 
 ### Option 2: Manual Build
 
 ```bash
-git clone https://github.com/hyperpolymath/techstack-filterlist.git
-cd techstack-filterlist
+git clone https://github.com/hyperpolymath/techstack-enforcer.git
+cd techstack-enforcer
 
 # Create directories
 mkdir -p obj bin

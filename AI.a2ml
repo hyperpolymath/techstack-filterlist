@@ -2,14 +2,25 @@
 # AI Assistant Instructions
 
 ## Repository Focus
-- `rsr-template-repo` is treated as a Rhodium Standard Repository; obey the Rhodium policies, maintain `.bot_directives`, and keep `.machines_readable/6scm/` authoritative.
+- `techstack-enforcer` is a formally verified technology stack enforcement system written in Ada/SPARK.
+- This is a Rhodium Standard Repository; obey RSR policies, maintain `.bot_directives`, and keep `.machine_readable/` authoritative.
+- The primary language is Ada/SPARK — all core enforcement logic MUST use SPARK_Mode.
 - Prefer to keep generated files out of source control, and regenerate them with the documented commands before committing.
 
+## Critical Invariants
+- Core engine (src/core/) MUST be SPARK_Mode — no unsafe Ada in enforcement logic.
+- Multi-layer blocking: never remove a blocking layer without adding a replacement.
+- Learning mode MUST NOT block — it is observe-only by design.
+- Lockdown mode MUST block on ALL violations including Warn level.
+- All enforcement decisions MUST flow through the formally verified core.
+
 ## Workflow
-1. Inspect `.machines_readable/6scm/STATE.scm` for blockers and next actions.
-2. Respect any constraints listed inside `.machines_readable/6scm/AGENTIC.scm` when tooling changes are requested.
-3. After finishing edits, update STATE with your outcomes and commit with a concise, imperative message.
+1. Inspect `.machine_readable/STATE.scm` for blockers and next actions.
+2. Respect any constraints listed inside `.machine_readable/AGENTIC.scm` when tooling changes are requested.
+3. Build with `gprbuild -P techstack_enforcer.gpr -XMODE=debug`.
+4. Verify with `gnatprove -P techstack_enforcer.gpr --level=2`.
+5. After finishing edits, update STATE with your outcomes and commit with a concise, imperative message.
 
 ## Delivery Promises
 - Mention in summaries whether STATE, `contractiles/`, or `.bot_directives/` changed.
-- Keep this file in sync with the repository’s status; update it if the governance changes.
+- Keep this file in sync with the repository's status; update it if the governance changes.

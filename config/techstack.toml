@@ -1,5 +1,5 @@
 # Techstack Enforcer Configuration
-# Formally verified technology stack filter list
+# Formally verified technology stack enforcement engine
 # Edit with techstack-tui for interactive management
 
 [mode]

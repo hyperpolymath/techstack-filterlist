@@ -6,9 +6,9 @@
 #
 # SETUP REQUIRED:
 #   1. Copy this file to .github/workflows/techstack.yml
-#   2. Set repository variable TECHSTACK_REPO to the techstack-filterlist fork/location
+#   2. Set repository variable TECHSTACK_REPO to the techstack-enforcer fork/location
 #      (Settings > Secrets and variables > Actions > Variables > New repository variable)
-#      Example: TECHSTACK_REPO = "hyperpolymath/techstack-filterlist"
+#      Example: TECHSTACK_REPO = "hyperpolymath/techstack-enforcer"
 #   3. Or replace ${{ vars.TECHSTACK_REPO }} with your repository path directly
 #   4. Customize TECHSTACK_DEFSET and TECHSTACK_MODE as needed
 
@@ -32,7 +32,7 @@ env:
 
   # Repository containing techstack-enforcer (set as GitHub variable or override here)
   # To set: Settings > Secrets and variables > Actions > Variables > TECHSTACK_REPO
-  TECHSTACK_REPO: ${{ vars.TECHSTACK_REPO || 'hyperpolymath/techstack-filterlist' }}
+  TECHSTACK_REPO: ${{ vars.TECHSTACK_REPO || 'hyperpolymath/techstack-enforcer' }}
 
 jobs:
   # Quick check on every PR

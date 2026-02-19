@@ -1,33 +1,49 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# Justfile - hyperpolymath standard task runner
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Justfile - techstack-enforcer task runner
 
 default:
     @just --list
 
-# Build the project
+# Build debug binary
 build:
-    @echo "Building..."
+    mkdir -p obj bin
+    gprbuild -P techstack_enforcer.gpr -XMODE=debug -j0
 
-# Run tests
-test:
-    @echo "Testing..."
+# Build release binary
+release-build:
+    mkdir -p obj bin
+    gprbuild -P techstack_enforcer.gpr -XMODE=release -j0
 
-# Run lints
-lint:
-    @echo "Linting..."
+# Run SPARK formal verification
+verify:
+    gnatprove -P techstack_enforcer.gpr --level=2
+
+# Run all checks (build + verify)
+check: build verify
+
+# Audit the current directory
+audit *ARGS:
+    ./bin/techstack_main audit . {{ARGS}}
+
+# Launch the TUI
+tui:
+    ./bin/techstack_tui_main
+
+# Install hooks to a target repository
+install-hooks REPO:
+    ./scripts/install-repo-hooks.sh {{REPO}}
+
+# Format Ada source code
+fmt:
+    gnatpp -P techstack_enforcer.gpr
 
 # Clean build artifacts
 clean:
-    @echo "Cleaning..."
+    rm -rf obj bin
 
-# Format code
-fmt:
-    @echo "Formatting..."
-
-# Run all checks
-check: lint test
+# Run tests (SPARK proofs are the primary test mechanism)
+test: verify
 
 # Prepare a release
-release VERSION:
-    @echo "Releasing {{VERSION}}..."
-
+release VERSION: release-build verify
+    @echo "Release v{{VERSION}} — build and verification passed"

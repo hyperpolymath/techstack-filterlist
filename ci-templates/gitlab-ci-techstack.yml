@@ -7,14 +7,14 @@
 #     - remote: 'https://raw.githubusercontent.com/${TECHSTACK_REPO}/main/ci-templates/gitlab-ci-techstack.yml'
 #
 #   variables:
-#     TECHSTACK_REPO: hyperpolymath/techstack-filterlist  # Your fork/source
+#     TECHSTACK_REPO: hyperpolymath/techstack-enforcer  # Your fork/source
 #     TECHSTACK_DEFSET: moderate    # or strict, enterprise, permissive
 #     TECHSTACK_MODE: enforce       # or learning, warn, lockdown
 #
 # USAGE OPTION 2 - Include from GitLab project:
 #
 #   include:
-#     - project: 'your-group/techstack-filterlist'
+#     - project: 'your-group/techstack-enforcer'
 #       file: '/ci-templates/gitlab-ci-techstack.yml'
 #       ref: main
 #

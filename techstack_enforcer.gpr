@@ -1,5 +1,5 @@
 -- Techstack Enforcer - Ada/SPARK Project File
--- Formally verified techstack filter list enforcement
+-- Formally verified techstack enforcement engine
 
 project Techstack_Enforcer is
 

@@ -1,6 +1,6 @@
 # Techstack Enforcer Documentation
 
-Welcome to the comprehensive documentation for Techstack Enforcer - a formally verified technology stack filter list enforcement system.
+Welcome to the comprehensive documentation for Techstack Enforcer - a formally verified technology stack enforcement system.
 
 ## Documentation Index
 

@@ -10,7 +10,7 @@ Add to your `.gitlab-ci.yml`:
 
 ```yaml
 include:
-  - project: 'your-group/techstack-filterlist'
+  - project: 'your-group/techstack-enforcer'
     file: '/ci-templates/gitlab-ci-techstack.yml'
     ref: main
 
@@ -61,7 +61,7 @@ The CI template provides these extendable jobs:
 
 2. Set repository variable `TECHSTACK_REPO`:
    - Go to Settings > Secrets and variables > Actions > Variables
-   - Add: `TECHSTACK_REPO` = `hyperpolymath/techstack-filterlist`
+   - Add: `TECHSTACK_REPO` = `hyperpolymath/techstack-enforcer`
 
 3. Customize definition set and mode in the workflow file
 
@@ -79,7 +79,7 @@ on:
 env:
   TECHSTACK_DEFSET: moderate
   TECHSTACK_MODE: enforce
-  TECHSTACK_REPO: ${{ vars.TECHSTACK_REPO || 'hyperpolymath/techstack-filterlist' }}
+  TECHSTACK_REPO: ${{ vars.TECHSTACK_REPO || 'hyperpolymath/techstack-enforcer' }}
 
 jobs:
   techstack-check:
